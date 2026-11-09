@@ -14,7 +14,9 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-DEFAULT_MODEL = "gemini-3.8-flash"
+from streamlit.errors import StreamlitSecretNotFoundError
+
+DEFAULT_MODEL = "gemini-3.6-flash"
 REQUEST_TIMEOUT_MS = 30_000  # the SDK's http timeout is in milliseconds
 MAX_REMARK_CHARS = 2000
 
@@ -39,9 +41,22 @@ def get_model_name() -> str:
     return os.getenv("GEMINI_MODEL", "").strip() or DEFAULT_MODEL
 
 
-def api_key_configured() -> bool:
+def _get_api_key() -> str:
     key = os.getenv("GEMINI_API_KEY", "").strip()
-    return bool(key) and key != "your_api_key_here"
+    if key and key != "your_api_key_here":
+        return key
+
+    import streamlit as st
+
+    try:
+        key = str(st.secrets.get("GEMINI_API_KEY", "")).strip()
+    except StreamlitSecretNotFoundError:
+        return ""
+    return "" if key == "your_api_key_here" else key
+
+
+def api_key_configured() -> bool:
+    return bool(_get_api_key())
 
 
 def build_prompt(patient: dict) -> str:
@@ -129,14 +144,15 @@ def analyze_patient(patient: dict, client=None, model: str | None = None) -> AIR
     """
     model = model or get_model_name()
     if client is None:
-        if not api_key_configured():
+        api_key = _get_api_key()
+        if not api_key:
             return AIResult(
                 ok=False,
                 error="GEMINI_API_KEY is not set. Add it to your .env file (see .env.example).",
                 model=model,
             )
         try:
-            client = _create_client(os.environ["GEMINI_API_KEY"].strip())
+            client = _create_client(api_key)
         except ImportError:
             return AIResult(
                 ok=False,
@@ -152,10 +168,11 @@ def check_connection(client=None, model: str | None = None) -> AIResult:
     """Send a tiny non-medical request to confirm the key and model work."""
     model = model or get_model_name()
     if client is None:
-        if not api_key_configured():
+        api_key = _get_api_key()
+        if not api_key:
             return AIResult(ok=False, error="GEMINI_API_KEY is not set.", model=model)
         try:
-            client = _create_client(os.environ["GEMINI_API_KEY"].strip())
+            client = _create_client(api_key)
         except ImportError:
             return AIResult(ok=False, error="The google-genai package is not installed.", model=model)
         except Exception as exc:  # noqa: BLE001

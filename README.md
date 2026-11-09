@@ -69,11 +69,22 @@ notepad .env
 
 3. Set `GEMINI_API_KEY=<your key>` in `.env`. The key is read from the environment, is never hard-coded, never shown in the UI, and `.env` is git-ignored.
 
-The default model is `gemini-3.8-flash`. If Google retires it, set `GEMINI_MODEL` in `.env` to a currently supported model from <https://ai.google.dev/gemini-api/docs/models>.
+The default model is `gemini-3.6-flash`. Set `GEMINI_MODEL` in `.env` to another currently supported model from <https://ai.google.dev/gemini-api/docs/models> if needed.
 
 ### Protect assessment data
 
 When a key is configured, creating or retrying a valid record sends its age and blood-test values to Google Gemini; the patient's name and email are excluded. Keep the key unset while entering the supplied assessment records unless you have confirmed they are synthetic or authorized for external processing. To demonstrate a live patient analysis, use a separate database and clearly synthetic values. The API connection test itself sends only a non-medical prompt.
+
+## Deploy to Streamlit Community Cloud
+
+The app is compatible with Streamlit Community Cloud. Push the project to GitHub, create an app from the repository with `app.py` as the entry point, then add secrets in the app's **Advanced settings** or **App settings**:
+
+```toml
+GEMINI_API_KEY = "your-new-key"
+GEMINI_MODEL = "gemini-3.6-flash"
+```
+
+The app reads hosted credentials from `st.secrets`; do not commit a `secrets.toml` file or paste a key into GitHub. Anyone who can use a public deployment may consume its Gemini quota, so keep the deployment private/restricted if available or do not configure the API key on a publicly accessible demo. Streamlit Community Cloud's local filesystem is not a durable database service; SQLite data may not persist across redeployments or restarts. Use only synthetic demo data in a hosted instance.
 
 ## Run the app
 

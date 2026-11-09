@@ -62,6 +62,17 @@ def test_missing_api_key_is_reported():
     assert not result.ok and "GEMINI_API_KEY is not set" in result.error
 
 
+def test_streamlit_secret_configures_key(monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.setattr(ai_service, "_get_api_key", lambda: "secret-from-streamlit")
+    client = FakeClient(response=SimpleNamespace(text="ready"))
+    monkeypatch.setattr(ai_service, "_create_client", lambda api_key: client)
+
+    assert ai_service.api_key_configured()
+    result = analyze_patient(PATIENT)
+    assert result.ok
+
+
 def test_placeholder_key_counts_as_missing(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "your_api_key_here")
     assert not ai_service.api_key_configured()
